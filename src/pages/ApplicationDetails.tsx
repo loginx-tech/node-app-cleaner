@@ -27,6 +27,7 @@ import config from '@/config/config.js';
 interface UserDirectory {
   id: string;
   name: string;
+  hasFiles?: boolean;
 }
 
 interface Application {
@@ -46,6 +47,7 @@ const ApplicationDetails = () => {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isRestarting, setIsRestarting] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [hasValidDirectories, setHasValidDirectories] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -83,32 +85,51 @@ const ApplicationDetails = () => {
           if (isPreview) {
             console.log("Generating preview user directories");
             const mockDirectories = [
-              { id: 'user1', name: 'user1' },
-              { id: 'user2', name: 'user2' },
-              { id: 'admin', name: 'admin' }
+              { id: 'user1', name: 'user1', hasFiles: true },
+              { id: 'user2', name: 'user2', hasFiles: true },
+              { id: 'admin', name: 'admin', hasFiles: true }
             ];
             setUserDirectories(mockDirectories);
+            setHasValidDirectories(true);
           } else {
-            // Fetch user directories
-            const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
-            const directories = await dirResponse.json();
-            setUserDirectories(directories);
+            try {
+              // Primeiro, verifica se os diretórios base existem
+              const baseResponse = await fetch(`/api/application/${appId}/check-directories`);
+              const baseData = await baseResponse.json();
+              
+              if (!baseData.success || !baseData.hasValidDirectories) {
+                setHasValidDirectories(false);
+                setUserDirectories([]);
+                return;
+              }
+              
+              // Se os diretórios base existem, busca os diretórios de usuário
+              const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
+              const directories = await dirResponse.json();
+              
+              if (directories && Array.isArray(directories)) {
+                setUserDirectories(directories);
+                setHasValidDirectories(true);
+              } else {
+                setUserDirectories([]);
+                setHasValidDirectories(false);
+              }
+            } catch (error) {
+              console.error('Error checking directories:', error);
+              setHasValidDirectories(false);
+              setUserDirectories([]);
+            }
           }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Failed to load data');
+        setHasValidDirectories(false);
         
         if (isPreview) {
           const currentApp = config.applications.find((app: Application) => app.id === appId) || null;
           setApplication(currentApp);
-          
-          const mockDirectories = [
-            { id: 'user1', name: 'user1' },
-            { id: 'user2', name: 'user2' },
-            { id: 'admin', name: 'admin' }
-          ];
-          setUserDirectories(mockDirectories);
+          setUserDirectories([]);
         }
       } finally {
         setIsLoading(false);
@@ -190,6 +211,22 @@ const ApplicationDetails = () => {
     );
   }
 
+  // Se não houver diretórios válidos, mostra apenas a mensagem e o botão de voltar
+  if (!hasValidDirectories) {
+    return (
+      <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
+        <div className="max-w-6xl mx-auto">
+          <div className="bg-white rounded-lg shadow p-12 text-center">
+            <FolderX className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+            <h1 className="text-xl font-semibold mb-2">Empty Directories</h1>
+            <p className="text-gray-500 mb-6">No user directories found for this application.</p>
+            <Button onClick={handleBack}>Back to Dashboard</Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
@@ -220,8 +257,8 @@ const ApplicationDetails = () => {
           {userDirectories.length === 0 ? (
             <div className="p-12 text-center">
               <FolderX className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-1">Sem diretórios</h3>
-              <p className="text-gray-500">Não existem diretórios de usuário para esta aplicação.</p>
+              <h3 className="text-lg font-medium text-gray-900 mb-1">Empty Directories</h3>
+              <p className="text-gray-500">No user directories found for this application.</p>
             </div>
           ) : (
             <Table>
