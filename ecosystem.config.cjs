@@ -9,12 +9,18 @@ module.exports = {
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'development',
-        PORT: 5000
+        PORT: 5000,
+        NODE_PATH: './node_modules'
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 5000
-      }
+        PORT: 5000,
+        NODE_PATH: './node_modules'
+      },
+      interpreter: 'node',
+      interpreter_args: '--experimental-specifier-resolution=node',
+      cwd: '.',
+      node_args: '--experimental-specifier-resolution=node'
     }
   ]
 }; 
