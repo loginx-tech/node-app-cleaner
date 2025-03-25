@@ -16,7 +16,7 @@ import PM2Status from '@/components/PM2Status';
 interface Application {
   id: number;
   name: string;
-  hasDirectories?: boolean; // Flag para indicar se existem diretórios
+  hasDirectories?: boolean;
 }
 
 const Dashboard = () => {
@@ -46,7 +46,7 @@ const Dashboard = () => {
           console.log("Using preview applications data");
           setApplications(config.applications.map(app => ({
             ...app,
-            hasDirectories: true // Em modo preview, assumimos que há diretórios
+            hasDirectories: true
           })));
         } else {
           const response = await fetch('/api/applications');
@@ -58,19 +58,33 @@ const Dashboard = () => {
               try {
                 const dirResponse = await fetch(`/api/applications/${app.id}/directories`);
                 const dirData = await dirResponse.json();
+                
+                // Adicionar log para debug
+                console.log(`App ${app.id} directories:`, dirData);
+                
+                // Verificar se há diretórios com arquivos
+                const hasNonEmptyDirectories = dirData.directories?.some((dir: any) => {
+                  // Verificar se o diretório tem a propriedade files e se tem arquivos
+                  return dir.files && dir.files.length > 0;
+                });
+
                 return {
                   ...app,
-                  hasDirectories: dirData.directories && dirData.directories.length > 0
+                  hasDirectories: hasNonEmptyDirectories
                 };
               } catch (error) {
                 console.error(`Error checking directories for app ${app.id}:`, error);
+                // Em caso de erro na verificação, assumimos que pode haver diretórios
                 return {
                   ...app,
-                  hasDirectories: false
+                  hasDirectories: true
                 };
               }
             })
           );
+          
+          // Log para debug
+          console.log('Applications with directory info:', appsWithDirInfo);
           
           setApplications(appsWithDirInfo);
         }
@@ -152,7 +166,7 @@ const Dashboard = () => {
                               <CardTitle className="text-lg">{app.name}</CardTitle>
                               <CardDescription>
                                 ID: {app.id}
-                                {!app.hasDirectories && (
+                                {app.hasDirectories === false && (
                                   <span className="ml-2 text-yellow-600">(No directories)</span>
                                 )}
                               </CardDescription>
@@ -160,8 +174,8 @@ const Dashboard = () => {
                             <Button 
                               onClick={() => handleViewDirectories(app.id)}
                               size="sm"
-                              disabled={!app.hasDirectories}
-                              variant={app.hasDirectories ? "default" : "secondary"}
+                              disabled={app.hasDirectories === false}
+                              variant={app.hasDirectories === false ? "secondary" : "default"}
                             >
                               View Directories
                             </Button>
