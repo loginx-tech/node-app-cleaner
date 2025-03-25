@@ -2,25 +2,22 @@ module.exports = {
   apps: [
     {
       name: 'node-app-cleaner',
-      script: 'src/server.js',
+      script: 'src/server.mjs',
       instances: 1,
       autorestart: true,
       watch: false,
       max_memory_restart: '1G',
       env: {
         NODE_ENV: 'development',
-        PORT: 5000,
-        NODE_PATH: './node_modules'
+        PORT: 5000
       },
       env_production: {
         NODE_ENV: 'production',
-        PORT: 5000,
-        NODE_PATH: './node_modules'
+        PORT: 5000
       },
       interpreter: 'node',
       interpreter_args: '--experimental-specifier-resolution=node',
-      cwd: '.',
-      node_args: '--experimental-specifier-resolution=node'
+      cwd: '.'
     }
   ]
 }; 
