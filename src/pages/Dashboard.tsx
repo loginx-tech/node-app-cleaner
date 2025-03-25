@@ -4,7 +4,6 @@ import {
   Card, 
   CardContent, 
   CardDescription, 
-  CardFooter, 
   CardHeader, 
   CardTitle 
 } from "@/components/ui/card";
@@ -117,23 +116,23 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="h-screen flex flex-col bg-gray-100">
+      {/* Header - Altura fixa */}
+      <div className="bg-white shadow-sm h-14 flex items-center">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-gray-900">PM2 Applications Manager</h1>
-            <Button variant="outline" onClick={handleLogout}>
+            <h1 className="text-xl font-bold text-gray-900">PM2 Applications Manager</h1>
+            <Button variant="outline" size="sm" onClick={handleLogout}>
               Logout
             </Button>
           </div>
         </div>
       </div>
 
-      {/* Preview Mode Banner */}
+      {/* Preview Mode Banner - Altura fixa */}
       {isPreviewMode && (
-        <div className="bg-blue-50 border-b border-blue-200">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+        <div className="bg-blue-50 border-b border-blue-200 h-8 flex items-center">
+          <div className="w-full px-4 sm:px-6 lg:px-8">
             <p className="text-sm text-blue-700">
               Modo Preview: Usando dados de aplicações locais
             </p>
@@ -141,30 +140,30 @@ const Dashboard = () => {
         </div>
       )}
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-12rem)]">
+      {/* Main Content - Altura flexível */}
+      <div className="flex-1 overflow-hidden">
+        <div className="h-full p-4 grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Left Column - Applications */}
-          <div className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Applications</CardTitle>
+          <div className="h-full">
+            <Card className="h-full flex flex-col">
+              <CardHeader className="py-3">
+                <CardTitle className="text-lg">Applications</CardTitle>
                 <CardDescription>Manage your PM2 applications</CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex-1 overflow-auto">
                 {isLoading ? (
-                  <div className="text-center py-12">
+                  <div className="text-center py-4">
                     <p>Loading applications...</p>
                   </div>
                 ) : (
-                  <div className="grid gap-4">
+                  <div className="grid gap-3">
                     {applications.map((app) => (
                       <Card key={app.id} className="hover:shadow-md transition-shadow">
-                        <CardHeader className="py-4">
+                        <CardHeader className="py-3">
                           <div className="flex justify-between items-center">
                             <div>
-                              <CardTitle className="text-lg">{app.name}</CardTitle>
-                              <CardDescription>
+                              <CardTitle className="text-base">{app.name}</CardTitle>
+                              <CardDescription className="text-sm">
                                 ID: {app.id}
                                 {app.hasDirectories === false && (
                                   <span className="ml-2 text-yellow-600">(No directories)</span>
@@ -190,7 +189,7 @@ const Dashboard = () => {
           </div>
 
           {/* Right Column - PM2 Status */}
-          <div className="space-y-6 h-full">
+          <div className="h-full">
             <PM2Status />
           </div>
         </div>
