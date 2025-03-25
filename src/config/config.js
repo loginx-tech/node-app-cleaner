@@ -5,39 +5,38 @@ const config = {
   users: [
     {
       username: 'admin',
-      password: '1D30gr4m4'
+      password: 'admin123'
     }
   ],
   // PM2 applications configuration
   applications: [
     {
       id: 1,
-      name: 'Clinder',
-      directory: '/opt/NODE/wppconnect-server_clinbot',
-      pm2Name: 'wppconnect-server_CLINBOT'
+      name: 'App1',
+      directory: '/path/to/app1',
+      pm2Name: 'app1'
     },
     {
       id: 2,
-      name: 'Babble',
-      directory: '/opt/NODE/wppconnect-server_babble',
-      pm2Name: 'wppconnect-server_BABBLE'
+      name: 'App2',
+      directory: '/path/to/app2',
+      pm2Name: 'app2'
     },
     {
       id: 3,
-      name: 'Demo',
-      directory: '/opt/NODE/wppconnect-server_demo',
-      pm2Name: 'wppconnect-server_DEMO'
+      name: 'App3',
+      directory: '/path/to/app3',
+      pm2Name: 'app3'
     },
     {
       id: 4,
-      name: 'Kersys',
-      directory: '/opt/NODE/wppconnect-server_kersys',
-      pm2Name: 'wppconnect-server_kersys'
+      name: 'App4',
+      directory: '/path/to/app4',
+      pm2Name: 'app4'
     }
   ]
 };
 
-// Export as a default module for ES modules
 export default config;
 
 // Ensure the config is available in Node.js environments

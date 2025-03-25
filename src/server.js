@@ -1,12 +1,16 @@
+import express from 'express';
+import { exec } from 'child_process';
+import path from 'path';
+import fs from 'fs-extra';
+import cors from 'cors';
+import bodyParser from 'body-parser';
+import config from './config/config.js';
+import archiver from 'archiver';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
 
-const express = require('express');
-const { exec } = require('child_process');
-const path = require('path');
-const fs = require('fs-extra');
-const cors = require('cors');
-const bodyParser = require('body-parser');
-const config = require('./config/config');
-const archiver = require('archiver');
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 5000;
