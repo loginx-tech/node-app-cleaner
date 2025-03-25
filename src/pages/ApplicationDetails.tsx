@@ -94,29 +94,33 @@ const ApplicationDetails = () => {
           } else {
             try {
               // Primeiro, verifica se os diretórios base existem
+              console.log(`Checking directories for app ${appId}...`);
               const baseResponse = await fetch(`/api/application/${appId}/check-directories`);
               const baseData = await baseResponse.json();
               
               console.log('Base directory check response:', baseData);
 
-              // Se os diretórios base existem, busca os diretórios de usuário
-              const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
-              const data = await dirResponse.json();
-              
-              console.log('User directories response:', data);
+              // Se os diretórios base existem, então procede para buscar diretórios de usuário
+              if (baseData.success && baseData.hasValidDirectories) {
+                console.log('Base directories are valid, fetching user directories...');
+                const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
+                const data = await dirResponse.json();
+                
+                console.log('User directories response:', data);
 
-              // Verifica se a resposta é válida e tem a propriedade directories
-              if (data && data.directories && Array.isArray(data.directories)) {
-                setUserDirectories(data.directories);
-                setHasValidDirectories(true);
-              } else if (baseData.success && baseData.hasValidDirectories) {
-                // Se os diretórios base existem mas ainda não há diretórios de usuário
-                setUserDirectories([]);
-                setHasValidDirectories(true);
+                if (data.success && Array.isArray(data.directories)) {
+                  console.log(`Found ${data.directories.length} user directories`);
+                  setUserDirectories(data.directories);
+                  setHasValidDirectories(true);
+                } else {
+                  console.log('No user directories found, but base directories exist');
+                  setUserDirectories([]);
+                  setHasValidDirectories(true); // Ainda é válido, só está vazio
+                }
               } else {
-                console.log('No valid directories found');
-                setUserDirectories([]);
+                console.log('Base directories are not valid');
                 setHasValidDirectories(false);
+                setUserDirectories([]);
               }
             } catch (error) {
               console.error('Error checking directories:', error);

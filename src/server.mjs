@@ -54,6 +54,36 @@ app.get('/api/applications', (req, res) => {
   res.json(config.applications);
 });
 
+// Nova rota para verificar se os diretórios base existem
+app.get('/api/application/:id/check-directories', (req, res) => {
+  const appId = parseInt(req.params.id);
+  const application = config.applications.find(app => app.id === appId);
+  
+  if (!application) {
+    return res.status(404).json({ success: false, message: 'Application not found' });
+  }
+  
+  try {
+    const userDataDirPath = path.join(application.directory, 'userDataDir');
+    const tokensPath = path.join(application.directory, 'tokens');
+    
+    const hasUserDataDir = fs.existsSync(userDataDirPath);
+    const hasTokensDir = fs.existsSync(tokensPath);
+    
+    res.json({
+      success: true,
+      hasValidDirectories: hasUserDataDir && hasTokensDir,
+      directories: {
+        userDataDir: hasUserDataDir,
+        tokensDir: hasTokensDir
+      }
+    });
+  } catch (error) {
+    console.error('Error checking directories:', error);
+    res.status(500).json({ success: false, message: 'Error checking directories' });
+  }
+});
+
 app.get('/api/application/:id/user-directories', (req, res) => {
   const appId = parseInt(req.params.id);
   const application = config.applications.find(app => app.id === appId);
@@ -73,7 +103,11 @@ app.get('/api/application/:id/user-directories', (req, res) => {
         name: dir
       }));
     
-    res.json(directories);
+    // Modificado para retornar no formato esperado pelo frontend
+    res.json({
+      success: true,
+      directories: directories
+    });
   } catch (error) {
     console.error('Error reading user directories:', error);
     res.status(500).json({ success: false, message: 'Error reading user directories' });
