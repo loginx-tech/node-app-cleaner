@@ -1,69 +1,61 @@
-# Welcome to your Lovable project
 
-## Project info
+# PM2 Applications Manager
 
-**URL**: https://lovable.dev/projects/6bfd2fb7-38ad-4b49-a16f-cd887a6161cc
+A web application to manage PM2 processes and their associated user directories and token files.
 
-## How can I edit this code?
+## Features
 
-There are several ways of editing your application.
+- Authentication system
+- List PM2 applications
+- View user directories for each application
+- Delete user directories and token files
+- Restart PM2 processes after deletion
 
-**Use Lovable**
+## Installation
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/6bfd2fb7-38ad-4b49-a16f-cd887a6161cc) and start prompting.
+1. Clone the repository
+2. Install frontend dependencies:
+   ```
+   npm install
+   ```
+3. Install backend dependencies:
+   ```
+   npm install --save express cors body-parser fs-extra
+   npm install --save-dev concurrently nodemon
+   ```
+4. Update the configuration in `src/config/config.js` with your applications paths and PM2 names
 
-Changes made via Lovable will be committed automatically to this repo.
+## Configuration
 
-**Use your preferred IDE**
+Edit the `src/config/config.js` file:
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+- Update the `users` array with your credentials
+- Update the `applications` array with your PM2 applications:
+  - `id`: Unique identifier
+  - `name`: Display name
+  - `directory`: Full path to the application directory
+  - `pm2Name`: Name of the PM2 process
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+## Running the application
 
-Follow these steps:
+1. Build the frontend:
+   ```
+   npm run build
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+2. Start the server:
+   ```
+   node src/server.js
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+3. Access the application at http://localhost:5000
 
-# Step 3: Install the necessary dependencies.
-npm i
+## Development
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+For development, you can run:
+
+```
+npx concurrently "npm run dev" "nodemon src/server.js"
 ```
 
-**Edit a file directly in GitHub**
-
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
-
-**Use GitHub Codespaces**
-
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
-
-## What technologies are used for this project?
-
-This project is built with .
-
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
-
-## How can I deploy this project?
-
-Simply open [Lovable](https://lovable.dev/projects/6bfd2fb7-38ad-4b49-a16f-cd887a6161cc) and click on Share -> Publish.
-
-## I want to use a custom domain - is that possible?
-
-We don't support custom domains (yet). If you want to deploy your project under your own domain then we recommend using Netlify. Visit our docs for more details: [Custom domains](https://docs.lovable.dev/tips-tricks/custom-domain/)
+This will start both the frontend development server and the backend server with hot reloading.

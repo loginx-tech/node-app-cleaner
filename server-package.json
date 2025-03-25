@@ -1,0 +1,22 @@
+
+{
+  "name": "pm2-apps-manager",
+  "version": "1.0.0",
+  "description": "PM2 Applications Manager",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "build": "vite build",
+    "dev": "concurrently \"vite\" \"nodemon src/server.js\""
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "body-parser": "^1.20.2",
+    "fs-extra": "^11.1.1"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "nodemon": "^3.0.1"
+  }
+}
