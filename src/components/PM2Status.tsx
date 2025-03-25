@@ -14,6 +14,7 @@ interface PM2Process {
     status: string;
     restart_time: number;
     created_at: number;
+    pm_uptime: number;
   };
 }
 
@@ -43,7 +44,7 @@ const PM2Status = () => {
       }
     };
 
-    fetchStatus(); // Initial fetch
+    fetchStatus();
     const interval = setInterval(fetchStatus, 5000);
 
     return () => clearInterval(interval);
@@ -59,9 +60,8 @@ const PM2Status = () => {
       eventSource.onmessage = (event) => {
         const logData = JSON.parse(event.data);
         setLogs(prevLogs => {
-          const newLogs = [...prevLogs, logData.data].slice(-100); // Keep last 100 logs
+          const newLogs = [...prevLogs, logData.data].slice(-100);
           
-          // Auto-scroll to bottom if we're already at the bottom
           if (scrollRef.current) {
             const { scrollHeight, scrollTop, clientHeight } = scrollRef.current;
             if (scrollHeight - scrollTop <= clientHeight + 100) {
@@ -81,7 +81,6 @@ const PM2Status = () => {
       eventSource.onerror = () => {
         console.error('SSE Error');
         eventSource.close();
-        // Attempt to reconnect after 5 seconds
         setTimeout(connectSSE, 5000);
       };
     };
@@ -98,7 +97,7 @@ const PM2Status = () => {
   // Format bytes to human readable format
   const formatBytes = (bytes: number) => {
     const mb = bytes / 1024 / 1024;
-    return `${mb.toFixed(2)} MB`;
+    return `${mb.toFixed(1)} MB`;
   };
 
   // Format timestamp to readable date
@@ -106,40 +105,51 @@ const PM2Status = () => {
     return new Date(timestamp).toLocaleString();
   };
 
+  // Calculate uptime in days
+  const calculateUptime = (uptime: number) => {
+    const uptimeInDays = Math.floor(uptime / (1000 * 60 * 60 * 24));
+    const uptimeInHours = Math.floor((uptime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const uptimeInMinutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
+
+    if (uptimeInDays > 0) {
+      return `${uptimeInDays}d ${uptimeInHours}h`;
+    } else if (uptimeInHours > 0) {
+      return `${uptimeInHours}h ${uptimeInMinutes}m`;
+    } else {
+      return `${uptimeInMinutes}m`;
+    }
+  };
+
   return (
-    <Card className="h-full">
-      <CardHeader>
+    <Card className="h-full flex flex-col">
+      <CardHeader className="py-3">
         <CardTitle>PM2 Monitor</CardTitle>
       </CardHeader>
-      <CardContent className="h-[calc(100%-5rem)]">
+      <CardContent className="flex-1 p-0">
         <Tabs 
           defaultValue="status" 
           className="h-full"
           value={activeTab}
           onValueChange={setActiveTab}
         >
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="w-full grid grid-cols-2 rounded-none">
             <TabsTrigger value="status">Status</TabsTrigger>
             <TabsTrigger value="logs">Logs</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="status" className="h-[calc(100%-3rem)]">
+          <TabsContent value="status" className="flex-1 p-2">
             {error ? (
-              <div className="text-red-500 p-4">{error}</div>
+              <div className="text-red-500 p-2">{error}</div>
             ) : (
-              <ScrollArea className="h-full pr-4">
-                <div className="space-y-4">
+              <ScrollArea className="h-[calc(100vh-15rem)]">
+                <div className="space-y-2">
                   {processes.map(process => (
                     <Card key={process.pm_id} className="border-l-4 border-l-blue-500">
-                      <CardContent className="p-4">
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                          <div>
-                            <div className="text-sm font-medium text-gray-500">Name</div>
-                            <div className="font-medium">{process.name}</div>
-                          </div>
-                          <div>
-                            <div className="text-sm font-medium text-gray-500">Status</div>
-                            <div className={`font-medium ${
+                      <div className="p-3">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                          <div className="col-span-2">
+                            <div className="font-medium truncate">{process.name}</div>
+                            <div className={`text-sm ${
                               process.pm2_env.status === 'online' 
                                 ? 'text-green-500' 
                                 : 'text-red-500'
@@ -148,23 +158,27 @@ const PM2Status = () => {
                             </div>
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-500">Memory</div>
+                            <div className="text-gray-500">Memory</div>
                             <div className="font-medium">{formatBytes(process.monit.memory)}</div>
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-500">CPU</div>
+                            <div className="text-gray-500">CPU</div>
                             <div className="font-medium">{process.monit.cpu}%</div>
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-500">Restarts</div>
-                            <div className="font-medium">{process.pm2_env.restart_time}</div>
+                            <div className="text-gray-500">Uptime</div>
+                            <div className="font-medium">{calculateUptime(process.pm2_env.pm_uptime)}</div>
                           </div>
                           <div>
-                            <div className="text-sm font-medium text-gray-500">Created</div>
+                            <div className="text-gray-500">Restarts</div>
+                            <div className="font-medium">{process.pm2_env.restart_time}</div>
+                          </div>
+                          <div className="col-span-2">
+                            <div className="text-gray-500">Created</div>
                             <div className="font-medium">{formatDate(process.pm2_env.created_at)}</div>
                           </div>
                         </div>
-                      </CardContent>
+                      </div>
                     </Card>
                   ))}
                 </div>
@@ -172,9 +186,9 @@ const PM2Status = () => {
             )}
           </TabsContent>
 
-          <TabsContent value="logs" className="h-[calc(100%-3rem)]">
+          <TabsContent value="logs" className="flex-1">
             <ScrollArea 
-              className="h-full border rounded-md bg-black text-white font-mono text-sm p-4"
+              className="h-[calc(100vh-15rem)] border-t bg-black text-white font-mono text-xs p-2"
               ref={scrollRef}
             >
               {logs.map((log, index) => (
