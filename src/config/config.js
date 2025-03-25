@@ -1,5 +1,5 @@
 
-const path = require('path');
+// Configuration file for PM2 Applications Manager
 
 const config = {
   // User credentials
@@ -38,8 +38,11 @@ const config = {
   ]
 };
 
-// Ensure the config is available in both Node.js and browser environments
-if (typeof module !== 'undefined') {
+// Export as a default module for ES modules
+export default config;
+
+// Ensure the config is available in Node.js environments
+if (typeof module !== 'undefined' && module.exports) {
   module.exports = config;
 }
 
@@ -47,4 +50,3 @@ if (typeof module !== 'undefined') {
 if (typeof window !== 'undefined') {
   window.PM2Config = config;
 }
-
