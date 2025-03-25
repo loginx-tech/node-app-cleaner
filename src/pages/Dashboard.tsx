@@ -12,6 +12,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import config from '@/config/config.js';
+import { Download } from 'lucide-react';
 
 interface Application {
   id: number;
@@ -22,6 +23,7 @@ const Dashboard = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [isDownloading, setIsDownloading] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -77,14 +79,58 @@ const Dashboard = () => {
     navigate(`/application/${appId}`);
   };
 
+  const handleDownloadProject = async () => {
+    setIsDownloading(true);
+    try {
+      const response = await fetch('/api/download');
+      
+      if (!response.ok) {
+        throw new Error('Failed to generate download');
+      }
+      
+      // Get the blob from the response
+      const blob = await response.blob();
+      
+      // Create a download link and click it
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'pm2-apps-manager.zip';
+      document.body.appendChild(a);
+      a.click();
+      
+      // Clean up
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast.success('Download iniciado com sucesso!');
+    } catch (error) {
+      console.error('Download error:', error);
+      toast.error('Falha ao baixar o projeto');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
       <div className="max-w-6xl mx-auto">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">PM2 Applications Manager</h1>
-          <Button variant="outline" onClick={handleLogout}>
-            Logout
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              variant="outline" 
+              onClick={handleDownloadProject} 
+              disabled={isDownloading}
+              className="flex items-center gap-2"
+            >
+              <Download size={18} />
+              {isDownloading ? 'Baixando...' : 'Download ZIP'}
+            </Button>
+            <Button variant="outline" onClick={handleLogout}>
+              Logout
+            </Button>
+          </div>
         </div>
 
         {isPreviewMode && (

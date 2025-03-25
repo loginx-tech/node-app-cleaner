@@ -6,6 +6,7 @@ const fs = require('fs-extra');
 const cors = require('cors');
 const bodyParser = require('body-parser');
 const config = require('./config/config');
+const archiver = require('archiver');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -117,6 +118,70 @@ app.delete('/api/application/:appId/user-directory/:dirId', (req, res) => {
   } catch (error) {
     console.error('Error deleting directory:', error);
     res.status(500).json({ success: false, message: 'Error deleting directory' });
+  }
+});
+
+// Download project ZIP
+app.get('/api/download', (req, res) => {
+  try {
+    const rootDir = path.join(__dirname, '..');
+    const output = fs.createWriteStream(path.join(rootDir, 'pm2-apps-manager.zip'));
+    const archive = archiver('zip', {
+      zlib: { level: 9 } // Maximum compression
+    });
+    
+    // Handle archive events
+    output.on('close', () => {
+      console.log(`Archive created: ${archive.pointer()} total bytes`);
+      const zipPath = path.join(rootDir, 'pm2-apps-manager.zip');
+      res.download(zipPath, 'pm2-apps-manager.zip', (err) => {
+        if (err) {
+          console.error('Error sending file:', err);
+        }
+        // Clean up - delete the file after sending
+        fs.unlink(zipPath, (unlinkErr) => {
+          if (unlinkErr) {
+            console.error('Error deleting zip file:', unlinkErr);
+          }
+        });
+      });
+    });
+    
+    archive.on('error', (err) => {
+      console.error('Archive error:', err);
+      res.status(500).json({ success: false, message: 'Error creating archive' });
+    });
+    
+    // Pipe the archive to the output file
+    archive.pipe(output);
+    
+    // Add files to the archive
+    const filesToExclude = [
+      'node_modules', 
+      'dist', 
+      '.git',
+      'pm2-apps-manager.zip'
+    ];
+    
+    // Add all files from the project root, excluding the ones in filesToExclude
+    fs.readdirSync(rootDir).forEach(item => {
+      const itemPath = path.join(rootDir, item);
+      if (!filesToExclude.includes(item)) {
+        const stats = fs.statSync(itemPath);
+        if (stats.isDirectory()) {
+          archive.directory(itemPath, item);
+        } else {
+          archive.file(itemPath, { name: item });
+        }
+      }
+    });
+    
+    // Finalize the archive
+    archive.finalize();
+    
+  } catch (error) {
+    console.error('Error in download endpoint:', error);
+    res.status(500).json({ success: false, message: 'Error creating download' });
   }
 });
 
