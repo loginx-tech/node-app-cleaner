@@ -278,6 +278,11 @@ app.get('/api/pm2/logs/:appName', (req, res) => {
   });
 });
 
+app.get('/favicon.ico', (req, res) => {
+  // Servir o favicon do diretório public
+  res.sendFile(path.join(__dirname, '../public/favicon.ico'));
+});
+
 // Serve React app for any other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
