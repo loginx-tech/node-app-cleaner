@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
@@ -22,7 +21,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
-import { RefreshCw, Trash } from "lucide-react";
+import { RefreshCw, Trash, FolderX } from "lucide-react";
 import config from '@/config/config.js';
 
 interface UserDirectory {
@@ -70,12 +69,10 @@ const ApplicationDetails = () => {
         let currentApp: Application | null = null;
         
         if (isPreview) {
-          // In preview mode, use config data
           console.log("Using preview application data");
           currentApp = config.applications.find((app: Application) => app.id === appId) || null;
           setApplication(currentApp);
         } else {
-          // Normal API call for production
           const appResponse = await fetch('/api/applications');
           const applications = await appResponse.json();
           currentApp = applications.find((app: Application) => app.id === appId);
@@ -84,7 +81,6 @@ const ApplicationDetails = () => {
 
         if (currentApp) {
           if (isPreview) {
-            // Generate mock user directories in preview mode
             console.log("Generating preview user directories");
             const mockDirectories = [
               { id: 'user1', name: 'user1' },
@@ -103,7 +99,6 @@ const ApplicationDetails = () => {
         console.error('Error fetching data:', error);
         toast.error('Failed to load data');
         
-        // In preview mode, fallback to mock data
         if (isPreview) {
           const currentApp = config.applications.find((app: Application) => app.id === appId) || null;
           setApplication(currentApp);
@@ -130,14 +125,12 @@ const ApplicationDetails = () => {
     
     try {
       if (isPreviewMode) {
-        // Simulate deletion in preview mode
         console.log(`Simulating deletion of directory ${selectedDirectory}`);
         setTimeout(() => {
           setUserDirectories(userDirectories.filter(dir => dir.id !== selectedDirectory));
           toast.success(`Successfully deleted directory ${selectedDirectory} (preview mode)`);
         }, 1000);
       } else {
-        // Real API call in production
         const response = await fetch(`/api/application/${appId}/user-directory/${selectedDirectory}`, {
           method: 'DELETE',
         });
@@ -165,7 +158,6 @@ const ApplicationDetails = () => {
     
     setIsRestarting(true);
     
-    // Simulate restarting in preview mode
     console.log(`Simulating restart of application ${application.name}`);
     setTimeout(() => {
       toast.success(`Successfully restarted ${application.name} (preview mode)`);
@@ -226,8 +218,10 @@ const ApplicationDetails = () => {
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {userDirectories.length === 0 ? (
-            <div className="p-6 text-center">
-              <p>No user directories found.</p>
+            <div className="p-12 text-center">
+              <FolderX className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              <h3 className="text-lg font-medium text-gray-900 mb-1">Sem diretórios</h3>
+              <p className="text-gray-500">Não existem diretórios de usuário para esta aplicação.</p>
             </div>
           ) : (
             <Table>
@@ -248,30 +242,32 @@ const ApplicationDetails = () => {
                         <AlertDialogTrigger asChild>
                           <Button 
                             variant="destructive" 
-                            onClick={() => setSelectedDirectory(dir.id)}
+                            size="sm"
+                            disabled={isDeleting}
                             className="flex items-center"
                           >
-                            <Trash className="w-4 h-4 mr-2" />
+                            <Trash className="w-4 h-4 mr-1" />
                             Delete
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
                           <AlertDialogHeader>
-                            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                             <AlertDialogDescription>
-                              This will permanently delete the user directory "{dir.name}" and its 
-                              corresponding token file, then restart the PM2 application.
+                              This will permanently delete the user directory and all its contents.
+                              This action cannot be undone.
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel onClick={() => setSelectedDirectory(null)}>
-                              Cancel
-                            </AlertDialogCancel>
-                            <AlertDialogAction 
-                              onClick={handleDelete}
-                              disabled={isDeleting}
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => {
+                                setSelectedDirectory(dir.id);
+                                handleDelete();
+                              }}
+                              className="bg-red-600 hover:bg-red-700"
                             >
-                              {isDeleting ? 'Deleting...' : 'Delete'}
+                              Delete
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

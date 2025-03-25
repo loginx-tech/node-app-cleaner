@@ -107,9 +107,12 @@ const PM2Status = () => {
 
   // Calculate uptime in days
   const calculateUptime = (uptime: number) => {
-    const uptimeInDays = Math.floor(uptime / (1000 * 60 * 60 * 24));
-    const uptimeInHours = Math.floor((uptime % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-    const uptimeInMinutes = Math.floor((uptime % (1000 * 60 * 60)) / (1000 * 60));
+    const now = Date.now();
+    const uptimeMs = now - uptime; // Calcula a diferença entre agora e o timestamp de início
+
+    const uptimeInDays = Math.floor(uptimeMs / (1000 * 60 * 60 * 24));
+    const uptimeInHours = Math.floor((uptimeMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+    const uptimeInMinutes = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
 
     if (uptimeInDays > 0) {
       return `${uptimeInDays}d ${uptimeInHours}h`;
