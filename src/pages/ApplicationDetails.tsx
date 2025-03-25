@@ -99,28 +99,22 @@ const ApplicationDetails = () => {
               
               console.log('Base directory check response:', baseData);
 
-              // Se os diretórios base não existem, não continua
-              if (!baseData.success || !baseData.hasValidDirectories) {
-                console.log('Base directories not found or invalid');
-                setHasValidDirectories(false);
-                setUserDirectories([]);
-                return;
-              }
-
               // Se os diretórios base existem, busca os diretórios de usuário
               const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
-              const directories = await dirResponse.json();
+              const data = await dirResponse.json();
               
-              console.log('User directories response:', directories);
+              console.log('User directories response:', data);
 
-              // Verifica se a resposta é um array válido
-              if (directories && Array.isArray(directories)) {
-                setUserDirectories(directories);
-                // Se temos diretórios base válidos, a interface deve mostrar a tabela
-                // mesmo que ainda não existam diretórios de usuário
+              // Verifica se a resposta é válida e tem a propriedade directories
+              if (data && data.directories && Array.isArray(data.directories)) {
+                setUserDirectories(data.directories);
+                setHasValidDirectories(true);
+              } else if (baseData.success && baseData.hasValidDirectories) {
+                // Se os diretórios base existem mas ainda não há diretórios de usuário
+                setUserDirectories([]);
                 setHasValidDirectories(true);
               } else {
-                console.log('Invalid directories response format');
+                console.log('No valid directories found');
                 setUserDirectories([]);
                 setHasValidDirectories(false);
               }
