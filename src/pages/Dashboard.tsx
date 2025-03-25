@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { 
@@ -12,6 +11,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
 import config from '@/config/config.js';
+import PM2Status from '@/components/PM2Status';
 
 interface Application {
   id: number;
@@ -79,8 +79,8 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto">
-        <div className="flex justify-between items-center mb-6">
+      <div className="max-w-6xl mx-auto space-y-6">
+        <div className="flex justify-between items-center">
           <h1 className="text-2xl font-bold">PM2 Applications Manager</h1>
           <div className="flex gap-2">
             <Button variant="outline" onClick={handleLogout}>
@@ -90,7 +90,7 @@ const Dashboard = () => {
         </div>
 
         {isPreviewMode && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md mb-4 text-sm">
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md text-sm">
             Modo Preview: Usando dados de aplicações locais
           </div>
         )}
@@ -122,6 +122,9 @@ const Dashboard = () => {
             ))}
           </div>
         )}
+
+        {/* PM2 Status and Logs */}
+        <PM2Status />
       </div>
     </div>
   );

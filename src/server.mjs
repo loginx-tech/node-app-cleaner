@@ -189,6 +189,61 @@ app.get('/api/download', (req, res) => {
   }
 });
 
+// New route for PM2 status
+app.get('/api/pm2/status', (req, res) => {
+  exec('pm2 jlist', (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error getting PM2 status: ${error}`);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Error getting PM2 status: ${error.message}` 
+      });
+    }
+    
+    try {
+      const processes = JSON.parse(stdout);
+      res.json({ success: true, processes });
+    } catch (parseError) {
+      console.error(`Error parsing PM2 status: ${parseError}`);
+      res.status(500).json({ 
+        success: false, 
+        message: `Error parsing PM2 status: ${parseError.message}` 
+      });
+    }
+  });
+});
+
+// New route for PM2 logs
+app.get('/api/pm2/logs/:appName', (req, res) => {
+  const appName = req.params.appName;
+  
+  // Set headers for Server-Sent Events
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  
+  // Function to send log data to client
+  const sendLog = (data) => {
+    res.write(`data: ${JSON.stringify(data)}\n\n`);
+  };
+  
+  // Start tailing the logs
+  const logProcess = exec(`pm2 logs ${appName} --raw --lines 50`, { maxBuffer: 1024 * 1024 });
+  
+  logProcess.stdout.on('data', (data) => {
+    sendLog({ type: 'out', data: data.toString() });
+  });
+  
+  logProcess.stderr.on('data', (data) => {
+    sendLog({ type: 'error', data: data.toString() });
+  });
+  
+  // Handle client disconnect
+  req.on('close', () => {
+    logProcess.kill();
+  });
+});
+
 // Serve React app for any other routes
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));
