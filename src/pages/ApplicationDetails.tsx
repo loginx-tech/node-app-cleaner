@@ -97,22 +97,22 @@ const ApplicationDetails = () => {
               const baseResponse = await fetch(`/api/application/${appId}/check-directories`);
               const baseData = await baseResponse.json();
               
-              if (!baseData.success || !baseData.hasValidDirectories) {
-                setHasValidDirectories(false);
-                setUserDirectories([]);
-                return;
-              }
+              console.log('Base directory check response:', baseData);
               
               // Se os diretórios base existem, busca os diretórios de usuário
               const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
               const directories = await dirResponse.json();
               
-              if (directories && Array.isArray(directories)) {
+              console.log('User directories response:', directories);
+
+              // Verifica se há diretórios e se são válidos
+              if (directories && Array.isArray(directories) && directories.length > 0) {
                 setUserDirectories(directories);
                 setHasValidDirectories(true);
               } else {
                 setUserDirectories([]);
-                setHasValidDirectories(false);
+                // Só marca como inválido se realmente não houver diretórios
+                setHasValidDirectories(baseData.success && baseData.hasValidDirectories);
               }
             } catch (error) {
               console.error('Error checking directories:', error);
