@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from 'sonner';
-import { users } from '@/config/config.js';
+import config from '@/config/config.js';
 
 const Index = () => {
   const [username, setUsername] = useState('');
@@ -38,7 +38,7 @@ const Index = () => {
         console.log("Using preview authentication mode");
         
         // Check credentials against the config file
-        const validUser = users.find(
+        const validUser = config.users.find(
           user => user.username === username && user.password === password
         );
         
