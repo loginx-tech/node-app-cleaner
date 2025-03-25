@@ -38,4 +38,13 @@ const config = {
   ]
 };
 
-module.exports = config;
+// Ensure the config is available in both Node.js and browser environments
+if (typeof module !== 'undefined') {
+  module.exports = config;
+}
+
+// Make sure it's available in the browser context too
+if (typeof window !== 'undefined') {
+  window.PM2Config = config;
+}
+
