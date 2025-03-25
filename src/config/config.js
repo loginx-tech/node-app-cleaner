@@ -1,4 +1,3 @@
-
 // Configuration file for PM2 Applications Manager
 
 const config = {
@@ -6,34 +5,34 @@ const config = {
   users: [
     {
       username: 'admin',
-      password: 'admin123'
+      password: '1D30gr4m4'
     }
   ],
   // PM2 applications configuration
   applications: [
     {
       id: 1,
-      name: 'App1',
-      directory: '/path/to/app1',
-      pm2Name: 'app1'
+      name: 'Clinder',
+      directory: '/opt/NODE/wppconnect-server_clinbot',
+      pm2Name: 'wppconnect-server_CLINBOT'
     },
     {
       id: 2,
-      name: 'App2',
-      directory: '/path/to/app2',
-      pm2Name: 'app2'
+      name: 'Babble',
+      directory: '/opt/NODE/wppconnect-server_babble',
+      pm2Name: 'wppconnect-server_BABBLE'
     },
     {
       id: 3,
-      name: 'App3',
-      directory: '/path/to/app3',
-      pm2Name: 'app3'
+      name: 'Demo',
+      directory: '/opt/NODE/wppconnect-server_demo',
+      pm2Name: 'wppconnect-server_DEMO'
     },
     {
       id: 4,
-      name: 'App4',
-      directory: '/path/to/app4',
-      pm2Name: 'app4'
+      name: 'Kersys',
+      directory: '/opt/NODE/wppconnect-server_kersys',
+      pm2Name: 'wppconnect-server_kersys'
     }
   ]
 };
