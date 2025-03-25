@@ -16,6 +16,7 @@ import PM2Status from '@/components/PM2Status';
 interface Application {
   id: number;
   name: string;
+  hasDirectories?: boolean; // Flag para indicar se existem diretórios
 }
 
 const Dashboard = () => {
@@ -42,23 +43,47 @@ const Dashboard = () => {
     const fetchApplications = async () => {
       try {
         if (isPreview) {
-          // In preview mode, use local data from config
           console.log("Using preview applications data");
-          setApplications(config.applications);
+          setApplications(config.applications.map(app => ({
+            ...app,
+            hasDirectories: true // Em modo preview, assumimos que há diretórios
+          })));
         } else {
-          // Normal API call for production
           const response = await fetch('/api/applications');
           const data = await response.json();
-          setApplications(data);
+          
+          // Verificar diretórios para cada aplicação
+          const appsWithDirInfo = await Promise.all(
+            data.map(async (app: Application) => {
+              try {
+                const dirResponse = await fetch(`/api/applications/${app.id}/directories`);
+                const dirData = await dirResponse.json();
+                return {
+                  ...app,
+                  hasDirectories: dirData.directories && dirData.directories.length > 0
+                };
+              } catch (error) {
+                console.error(`Error checking directories for app ${app.id}:`, error);
+                return {
+                  ...app,
+                  hasDirectories: false
+                };
+              }
+            })
+          );
+          
+          setApplications(appsWithDirInfo);
         }
       } catch (error) {
         console.error('Error fetching applications:', error);
         toast.error('Failed to load applications');
         
-        // Fallback to config data in case of error
         if (isPreview) {
           console.log("Falling back to config applications data");
-          setApplications(config.applications);
+          setApplications(config.applications.map(app => ({
+            ...app,
+            hasDirectories: true
+          })));
         }
       } finally {
         setIsLoading(false);
@@ -78,53 +103,83 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
-      <div className="max-w-6xl mx-auto space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold">PM2 Applications Manager</h1>
-          <div className="flex gap-2">
+    <div className="min-h-screen bg-gray-100">
+      {/* Header */}
+      <div className="bg-white shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-gray-900">PM2 Applications Manager</h1>
             <Button variant="outline" onClick={handleLogout}>
               Logout
             </Button>
           </div>
         </div>
+      </div>
 
-        {isPreviewMode && (
-          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md text-sm">
-            Modo Preview: Usando dados de aplicações locais
+      {/* Preview Mode Banner */}
+      {isPreviewMode && (
+        <div className="bg-blue-50 border-b border-blue-200">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2">
+            <p className="text-sm text-blue-700">
+              Modo Preview: Usando dados de aplicações locais
+            </p>
           </div>
-        )}
+        </div>
+      )}
 
-        {isLoading ? (
-          <div className="text-center py-12">
-            <p>Loading applications...</p>
+      {/* Main Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-[calc(100vh-12rem)]">
+          {/* Left Column - Applications */}
+          <div className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Applications</CardTitle>
+                <CardDescription>Manage your PM2 applications</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {isLoading ? (
+                  <div className="text-center py-12">
+                    <p>Loading applications...</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {applications.map((app) => (
+                      <Card key={app.id} className="hover:shadow-md transition-shadow">
+                        <CardHeader className="py-4">
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <CardTitle className="text-lg">{app.name}</CardTitle>
+                              <CardDescription>
+                                ID: {app.id}
+                                {!app.hasDirectories && (
+                                  <span className="ml-2 text-yellow-600">(No directories)</span>
+                                )}
+                              </CardDescription>
+                            </div>
+                            <Button 
+                              onClick={() => handleViewDirectories(app.id)}
+                              size="sm"
+                              disabled={!app.hasDirectories}
+                              variant={app.hasDirectories ? "default" : "secondary"}
+                            >
+                              View Directories
+                            </Button>
+                          </div>
+                        </CardHeader>
+                      </Card>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {applications.map((app) => (
-              <Card key={app.id} className="hover:shadow-lg transition-shadow">
-                <CardHeader>
-                  <CardTitle>{app.name}</CardTitle>
-                  <CardDescription>PM2 Application</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-sm">ID: {app.id}</p>
-                </CardContent>
-                <CardFooter>
-                  <Button 
-                    className="w-full" 
-                    onClick={() => handleViewDirectories(app.id)}
-                  >
-                    View User Directories
-                  </Button>
-                </CardFooter>
-              </Card>
-            ))}
-          </div>
-        )}
 
-        {/* PM2 Status and Logs */}
-        <PM2Status />
+          {/* Right Column - PM2 Status */}
+          <div className="space-y-6 h-full">
+            <PM2Status />
+          </div>
+        </div>
       </div>
     </div>
   );
