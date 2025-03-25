@@ -22,6 +22,8 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { toast } from 'sonner';
+import { RefreshCw, Trash } from "lucide-react";
+import config from '@/config/config.js';
 
 interface UserDirectory {
   id: string;
@@ -31,6 +33,8 @@ interface UserDirectory {
 interface Application {
   id: number;
   name: string;
+  directory?: string;
+  pm2Name?: string;
 }
 
 const ApplicationDetails = () => {
@@ -41,6 +45,8 @@ const ApplicationDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [selectedDirectory, setSelectedDirectory] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isRestarting, setIsRestarting] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -51,31 +57,71 @@ const ApplicationDetails = () => {
       return;
     }
 
+    // Check if we're in a preview environment
+    const isPreview = window.location.hostname.includes('lovableproject.com') || 
+                     window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+    setIsPreviewMode(isPreview);
+
     // Fetch application and user directories
     const fetchData = async () => {
       try {
         // Fetch application details
-        const appResponse = await fetch('/api/applications');
-        const applications = await appResponse.json();
-        const currentApp = applications.find((app: Application) => app.id === appId);
-        setApplication(currentApp);
+        let currentApp: Application | null = null;
+        
+        if (isPreview) {
+          // In preview mode, use config data
+          console.log("Using preview application data");
+          currentApp = config.applications.find((app: Application) => app.id === appId) || null;
+          setApplication(currentApp);
+        } else {
+          // Normal API call for production
+          const appResponse = await fetch('/api/applications');
+          const applications = await appResponse.json();
+          currentApp = applications.find((app: Application) => app.id === appId);
+          setApplication(currentApp);
+        }
 
         if (currentApp) {
-          // Fetch user directories
-          const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
-          const directories = await dirResponse.json();
-          setUserDirectories(directories);
+          if (isPreview) {
+            // Generate mock user directories in preview mode
+            console.log("Generating preview user directories");
+            const mockDirectories = [
+              { id: 'user1', name: 'user1' },
+              { id: 'user2', name: 'user2' },
+              { id: 'admin', name: 'admin' }
+            ];
+            setUserDirectories(mockDirectories);
+          } else {
+            // Fetch user directories
+            const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
+            const directories = await dirResponse.json();
+            setUserDirectories(directories);
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error);
         toast.error('Failed to load data');
+        
+        // In preview mode, fallback to mock data
+        if (isPreview) {
+          const currentApp = config.applications.find((app: Application) => app.id === appId) || null;
+          setApplication(currentApp);
+          
+          const mockDirectories = [
+            { id: 'user1', name: 'user1' },
+            { id: 'user2', name: 'user2' },
+            { id: 'admin', name: 'admin' }
+          ];
+          setUserDirectories(mockDirectories);
+        }
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchData();
-  }, [appId, navigate]);
+  }, [appId, navigate, isPreviewMode]);
 
   const handleDelete = async () => {
     if (!selectedDirectory) return;
@@ -83,17 +129,27 @@ const ApplicationDetails = () => {
     setIsDeleting(true);
     
     try {
-      const response = await fetch(`/api/application/${appId}/user-directory/${selectedDirectory}`, {
-        method: 'DELETE',
-      });
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        setUserDirectories(userDirectories.filter(dir => dir.id !== selectedDirectory));
-        toast.success(result.message);
+      if (isPreviewMode) {
+        // Simulate deletion in preview mode
+        console.log(`Simulating deletion of directory ${selectedDirectory}`);
+        setTimeout(() => {
+          setUserDirectories(userDirectories.filter(dir => dir.id !== selectedDirectory));
+          toast.success(`Successfully deleted directory ${selectedDirectory} (preview mode)`);
+        }, 1000);
       } else {
-        toast.error(result.message);
+        // Real API call in production
+        const response = await fetch(`/api/application/${appId}/user-directory/${selectedDirectory}`, {
+          method: 'DELETE',
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+          setUserDirectories(userDirectories.filter(dir => dir.id !== selectedDirectory));
+          toast.success(result.message);
+        } else {
+          toast.error(result.message);
+        }
       }
     } catch (error) {
       console.error('Error deleting directory:', error);
@@ -102,6 +158,19 @@ const ApplicationDetails = () => {
       setIsDeleting(false);
       setSelectedDirectory(null);
     }
+  };
+
+  const handleRestart = () => {
+    if (!application) return;
+    
+    setIsRestarting(true);
+    
+    // Simulate restarting in preview mode
+    console.log(`Simulating restart of application ${application.name}`);
+    setTimeout(() => {
+      toast.success(`Successfully restarted ${application.name} (preview mode)`);
+      setIsRestarting(false);
+    }, 1500);
   };
 
   const handleBack = () => {
@@ -137,7 +206,23 @@ const ApplicationDetails = () => {
             Back
           </Button>
           <h1 className="text-2xl font-bold">{application.name} - User Directories</h1>
+          
+          <Button 
+            variant="outline" 
+            onClick={handleRestart} 
+            disabled={isRestarting} 
+            className="ml-auto flex items-center"
+          >
+            <RefreshCw className="w-4 h-4 mr-2" />
+            {isRestarting ? 'Restarting...' : 'Restart PM2 App'}
+          </Button>
         </div>
+
+        {isPreviewMode && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md mb-4 text-sm">
+            Modo Preview: As alterações não afetarão nenhum sistema real
+          </div>
+        )}
 
         <div className="bg-white rounded-lg shadow overflow-hidden">
           {userDirectories.length === 0 ? (
@@ -164,7 +249,9 @@ const ApplicationDetails = () => {
                           <Button 
                             variant="destructive" 
                             onClick={() => setSelectedDirectory(dir.id)}
+                            className="flex items-center"
                           >
+                            <Trash className="w-4 h-4 mr-2" />
                             Delete
                           </Button>
                         </AlertDialogTrigger>

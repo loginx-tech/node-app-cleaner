@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { toast } from 'sonner';
+import config from '@/config/config.js';
 
 interface Application {
   id: number;
@@ -20,6 +21,7 @@ interface Application {
 const Dashboard = () => {
   const [applications, setApplications] = useState<Application[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -30,15 +32,34 @@ const Dashboard = () => {
       return;
     }
 
+    // Check if we're in a preview environment
+    const isPreview = window.location.hostname.includes('lovableproject.com') || 
+                     window.location.hostname === 'localhost' || 
+                     window.location.hostname === '127.0.0.1';
+    setIsPreviewMode(isPreview);
+
     // Fetch applications
     const fetchApplications = async () => {
       try {
-        const response = await fetch('/api/applications');
-        const data = await response.json();
-        setApplications(data);
+        if (isPreview) {
+          // In preview mode, use local data from config
+          console.log("Using preview applications data");
+          setApplications(config.applications);
+        } else {
+          // Normal API call for production
+          const response = await fetch('/api/applications');
+          const data = await response.json();
+          setApplications(data);
+        }
       } catch (error) {
         console.error('Error fetching applications:', error);
         toast.error('Failed to load applications');
+        
+        // Fallback to config data in case of error
+        if (isPreview) {
+          console.log("Falling back to config applications data");
+          setApplications(config.applications);
+        }
       } finally {
         setIsLoading(false);
       }
@@ -65,6 +86,12 @@ const Dashboard = () => {
             Logout
           </Button>
         </div>
+
+        {isPreviewMode && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-700 px-4 py-2 rounded-md mb-4 text-sm">
+            Modo Preview: Usando dados de aplicações locais
+          </div>
+        )}
 
         {isLoading ? (
           <div className="text-center py-12">
