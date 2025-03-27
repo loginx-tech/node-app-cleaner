@@ -4,7 +4,7 @@ import path from 'path';
 import fs from 'fs-extra';
 import cors from 'cors';
 import bodyParser from 'body-parser';
-import config from './config/config.js';
+import config from './config/config.server.js';
 import archiver from 'archiver';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';

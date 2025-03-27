@@ -1,4 +1,4 @@
-// Configuration file for PM2 Applications Manager
+// Server-side configuration file for PM2 Applications Manager
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 
@@ -43,44 +43,4 @@ const config = {
   ]
 };
 
-export default config;
-
-// Ensure the config is available in Node.js environments
-if (typeof module !== 'undefined' && module.exports) {
-  module.exports = config;
-}
-
-// Make sure it's available in the browser context too
-if (typeof window !== 'undefined') {
-  window.PM2Config = config;
-}
-
-// Client-side configuration file for PM2 Applications Manager
-
-const configClient = {
-  // PM2 applications configuration
-  applications: [
-    {
-      id: 1,
-      name: 'Clinder',
-      pm2Name: 'wppconnect-server_CLINBOT'
-    },
-    {
-      id: 2,
-      name: 'Babble',
-      pm2Name: 'wppconnect-server_BABBLE'
-    },
-    {
-      id: 3,
-      name: 'Demo',
-      pm2Name: 'wppconnect-server_DEMO'
-    },
-    {
-      id: 4,
-      name: 'Kersys',
-      pm2Name: 'wppconnect-server_kersys'
-    }
-  ]
-};
-
-export default configClient;
+export default config; 
