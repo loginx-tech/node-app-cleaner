@@ -11,16 +11,34 @@ const config = {
   users: [
     {
       username: 'admin',
-      password: 'admin123'
+      password: '1D30gr4m4'
     }
   ],
   // PM2 applications configuration
   applications: [
     {
       id: 1,
-      name: 'WPPConnect Server',
-      directory: join(projectRoot, 'wppconnect-server'),
-      pm2Name: 'wppconnect-server'
+      name: 'Clinder',
+      directory: '/opt/NODE/wppconnect-server_clinbot',
+      pm2Name: 'wppconnect-server_CLINBOT'
+    },
+    {
+      id: 2,
+      name: 'Babble',
+      directory: '/opt/NODE/wppconnect-server_babble',
+      pm2Name: 'wppconnect-server_BABBLE'
+    },
+    {
+      id: 3,
+      name: 'Demo',
+      directory: '/opt/NODE/wppconnect-server_demo',
+      pm2Name: 'wppconnect-server_DEMO'
+    },
+    {
+      id: 4,
+      name: 'Kersys',
+      directory: '/opt/NODE/wppconnect-server_kersys',
+      pm2Name: 'wppconnect-server_kersys'
     }
   ]
 };
