@@ -178,16 +178,29 @@ const ApplicationDetails = () => {
     }
   };
 
-  const handleRestart = () => {
+  const handleRestart = async () => {
     if (!application) return;
     
     setIsRestarting(true);
     
-    console.log(`Simulating restart of application ${application.name}`);
-    setTimeout(() => {
-      toast.success(`Successfully restarted ${application.name} (preview mode)`);
+    try {
+      const response = await fetch(`/api/pm2/restart/${application.pm2Name}`, {
+        method: 'POST'
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        toast.success(`Successfully restarted ${application.name}`);
+      } else {
+        toast.error(result.message || 'Failed to restart application');
+      }
+    } catch (error) {
+      console.error('Error restarting application:', error);
+      toast.error('Failed to restart application');
+    } finally {
       setIsRestarting(false);
-    }, 1500);
+    }
   };
 
   const handleBack = () => {

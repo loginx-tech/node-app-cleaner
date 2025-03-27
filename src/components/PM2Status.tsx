@@ -90,11 +90,15 @@ const PM2Status = () => {
               data: logData.data.trim()
             };
             
-            const newLogs = [...prevLogs, newLog].slice(-100);
+            // Mantém apenas os últimos 1000 logs para evitar problemas de memória
+            const newLogs = [...prevLogs, newLog].slice(-1000);
             
+            // Auto-scroll apenas se o usuário estiver no final
             if (scrollRef.current) {
               const { scrollHeight, scrollTop, clientHeight } = scrollRef.current;
-              if (scrollHeight - scrollTop <= clientHeight + 100) {
+              const isAtBottom = scrollHeight - scrollTop <= clientHeight + 100;
+              
+              if (isAtBottom) {
                 setTimeout(() => {
                   scrollRef.current?.scrollTo({
                     top: scrollRef.current.scrollHeight,
@@ -116,6 +120,7 @@ const PM2Status = () => {
         if (eventSource) {
           eventSource.close();
         }
+        // Tenta reconectar após 5 segundos
         setTimeout(connectSSE, 5000);
       };
     };

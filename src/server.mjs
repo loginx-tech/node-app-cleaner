@@ -420,8 +420,10 @@ app.get('/api/pm2/logs/:appName', (req, res) => {
     res.write(`data: ${JSON.stringify(data)}\n\n`);
   };
   
-  // Start tailing the logs
-  const logProcess = exec(`pm2 logs ${appName} --raw --lines 50`, { maxBuffer: 1024 * 1024 });
+  // Start tailing the logs with increased buffer and no line limit
+  const logProcess = exec(`pm2 logs ${appName} --raw --nostream`, { 
+    maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+  });
   
   logProcess.stdout.on('data', (data) => {
     const lines = data.toString().split('\n').filter(line => line.trim());
@@ -431,13 +433,13 @@ app.get('/api/pm2/logs/:appName', (req, res) => {
         const match = line.match(/^\[([^\]]+)\]\s*(.+)$/);
         if (match) {
           sendLog({ 
-            type: line.includes('error') ? 'error' : 'out',
+            type: line.toLowerCase().includes('error') ? 'error' : 'out',
             data: match[2],
             timestamp: match[1]
           });
         } else {
           sendLog({ 
-            type: line.includes('error') ? 'error' : 'out',
+            type: line.toLowerCase().includes('error') ? 'error' : 'out',
             data: line,
             timestamp: new Date().toISOString()
           });
@@ -478,6 +480,29 @@ app.get('/api/pm2/logs/:appName', (req, res) => {
     if (logProcess) {
       logProcess.kill();
     }
+  });
+});
+
+// New route for PM2 restart
+app.post('/api/pm2/restart/:appName', (req, res) => {
+  const appName = req.params.appName;
+  console.log(`Attempting to restart PM2 process: ${appName}`);
+  
+  exec(`pm2 restart ${appName}`, (error, stdout, stderr) => {
+    if (error) {
+      console.error(`Error restarting PM2 process: ${error}`);
+      return res.status(500).json({ 
+        success: false, 
+        message: `Error restarting PM2 process: ${error.message}` 
+      });
+    }
+    
+    console.log(`Successfully restarted PM2 process: ${appName}`);
+    res.json({ 
+      success: true, 
+      message: `Successfully restarted ${appName}`,
+      output: stdout
+    });
   });
 });
 
