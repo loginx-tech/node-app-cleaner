@@ -409,20 +409,31 @@ app.get('/api/pm2/status', (req, res) => {
 // New route for PM2 logs
 app.get('/api/pm2/logs/:appName', (req, res) => {
   const appName = req.params.appName;
+  console.log(`Starting log stream for process: ${appName}`);
   
   // Set headers for Server-Sent Events
   res.setHeader('Content-Type', 'text/event-stream');
   res.setHeader('Cache-Control', 'no-cache');
   res.setHeader('Connection', 'keep-alive');
+  res.setHeader('Access-Control-Allow-Origin', '*');
   
   // Function to send log data to client
   const sendLog = (data) => {
-    res.write(`data: ${JSON.stringify(data)}\n\n`);
+    if (!res.writableEnded) {
+      res.write(`data: ${JSON.stringify(data)}\n\n`);
+    }
   };
   
   // Start tailing the logs with increased buffer and no line limit
-  const logProcess = exec(`pm2 logs ${appName} --raw --nostream`, { 
+  const logProcess = exec(`pm2 logs ${appName} --raw --nostream --lines 1000`, { 
     maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+  });
+  
+  // Send initial connection message
+  sendLog({
+    type: 'system',
+    data: `Connected to logs for ${appName}`,
+    timestamp: new Date().toISOString()
   });
   
   logProcess.stdout.on('data', (data) => {
@@ -477,6 +488,7 @@ app.get('/api/pm2/logs/:appName', (req, res) => {
   
   // Handle client disconnect
   req.on('close', () => {
+    console.log(`Client disconnected from logs for ${appName}`);
     if (logProcess) {
       logProcess.kill();
     }

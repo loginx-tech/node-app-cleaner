@@ -70,7 +70,10 @@ const PM2Status = () => {
     
     const connectSSE = () => {
       // Se não houver processo selecionado, não conecta ao SSE
-      if (!selectedProcess) return;
+      if (!selectedProcess) {
+        console.log('No process selected for logs');
+        return;
+      }
 
       // Fecha a conexão anterior se existir
       if (eventSource) {
@@ -79,6 +82,10 @@ const PM2Status = () => {
 
       console.log(`Connecting to logs for process: ${selectedProcess}`);
       eventSource = new EventSource(`/api/pm2/logs/${selectedProcess}`);
+
+      eventSource.onopen = () => {
+        console.log('SSE connection opened');
+      };
 
       eventSource.onmessage = (event) => {
         try {
@@ -115,8 +122,8 @@ const PM2Status = () => {
         }
       };
 
-      eventSource.onerror = () => {
-        console.error('SSE Error');
+      eventSource.onerror = (error) => {
+        console.error('SSE Error:', error);
         if (eventSource) {
           eventSource.close();
         }
