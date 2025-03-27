@@ -1,5 +1,5 @@
 import express from 'express';
-import { exec } from 'child_process';
+import { exec, execSync } from 'child_process';
 import path from 'path';
 import fs from 'fs-extra';
 import cors from 'cors';
@@ -118,6 +118,7 @@ app.delete('/api/application/:appId/user-directory/:dirId', (req, res) => {
   const appId = parseInt(req.params.appId);
   const dirId = req.params.dirId;
   
+  console.log('=== DELETE REQUEST ===');
   console.log(`Attempting to delete directory for app ${appId}, directory ${dirId}`);
   
   const application = config.applications.find(app => app.id === appId);
@@ -127,66 +128,136 @@ app.delete('/api/application/:appId/user-directory/:dirId', (req, res) => {
     return res.status(404).json({ success: false, message: 'Application not found' });
   }
   
-  console.log('Found application:', application.name);
+  console.log('Found application:', application);
   
-  const userDataDirPath = path.join(application.directory, 'userDataDir', dirId);
-  const tokensFilePath = path.join(application.directory, 'tokens', `${dirId}.json`);
+  // Usar caminhos absolutos
+  const userDataDirPath = path.resolve(application.directory, 'userDataDir', dirId);
+  const tokensFilePath = path.resolve(application.directory, 'tokens', `${dirId}.json`);
   
-  console.log('Paths to delete:', {
+  console.log('Full paths to delete:', {
     userDataDirPath,
-    tokensFilePath
+    tokensFilePath,
+    currentUser: process.getuid(),
+    currentGroup: process.getgid()
   });
   
   try {
-    // Verificar se os diretórios existem antes de tentar deletar
+    // Verificar permissões e existência do diretório base
+    try {
+      fs.accessSync(application.directory, fs.constants.W_OK);
+      console.log('Base directory is writable:', application.directory);
+    } catch (permError) {
+      console.error('Permission error on base directory:', permError);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'No permission to access base directory',
+        error: permError.message
+      });
+    }
+
+    // Verificar se os diretórios existem
     const userDirExists = fs.existsSync(userDataDirPath);
     const tokenFileExists = fs.existsSync(tokensFilePath);
     
     console.log('Existence check:', {
       userDirExists,
-      tokenFileExists
+      tokenFileExists,
+      userDataDirPath,
+      tokensFilePath
     });
     
     if (!userDirExists && !tokenFileExists) {
       return res.status(404).json({ 
         success: false, 
-        message: 'Directory and token file not found' 
+        message: 'Directory and token file not found',
+        paths: {
+          userDataDirPath,
+          tokensFilePath
+        }
       });
     }
     
+    let deletionResults = {
+      userDirDeleted: false,
+      tokenFileDeleted: false,
+      errors: []
+    };
+
     // Delete user directory
     if (userDirExists) {
       try {
-        fs.removeSync(userDataDirPath);
-        console.log('Successfully deleted user directory');
+        // Verificar permissão específica para o diretório do usuário
+        fs.accessSync(userDataDirPath, fs.constants.W_OK);
+        console.log('User directory is writable:', userDataDirPath);
+        
+        // Primeiro tenta usar fs.rmSync
+        try {
+          fs.rmSync(userDataDirPath, { recursive: true, force: true });
+          console.log('Successfully deleted user directory using fs.rmSync');
+          deletionResults.userDirDeleted = true;
+        } catch (rmError) {
+          console.error('Error using fs.rmSync:', rmError);
+          
+          // Se falhar, tenta usar rm -rf
+          try {
+            execSync(`rm -rf "${userDataDirPath}"`);
+            console.log('Successfully deleted user directory using rm -rf');
+            deletionResults.userDirDeleted = true;
+          } catch (execError) {
+            console.error('Error using rm -rf:', execError);
+            deletionResults.errors.push(`Failed to delete user directory: ${execError.message}`);
+          }
+        }
       } catch (dirError) {
-        console.error('Error deleting user directory:', dirError);
-        throw dirError;
+        console.error('Error with user directory:', dirError);
+        deletionResults.errors.push(`Permission error on user directory: ${dirError.message}`);
       }
     }
     
     // Delete tokens file
     if (tokenFileExists) {
       try {
-        fs.removeSync(tokensFilePath);
-        console.log('Successfully deleted token file');
+        // Verificar permissão específica para o arquivo de token
+        fs.accessSync(tokensFilePath, fs.constants.W_OK);
+        console.log('Token file is writable:', tokensFilePath);
+        
+        try {
+          fs.unlinkSync(tokensFilePath);
+          console.log('Successfully deleted token file');
+          deletionResults.tokenFileDeleted = true;
+        } catch (unlinkError) {
+          console.error('Error deleting token file:', unlinkError);
+          deletionResults.errors.push(`Failed to delete token file: ${unlinkError.message}`);
+        }
       } catch (tokenError) {
-        console.error('Error deleting token file:', tokenError);
-        throw tokenError;
+        console.error('Error with token file:', tokenError);
+        deletionResults.errors.push(`Permission error on token file: ${tokenError.message}`);
       }
     }
+
+    // Se houve erros mas algumas operações foram bem sucedidas
+    if (deletionResults.errors.length > 0 && (deletionResults.userDirDeleted || deletionResults.tokenFileDeleted)) {
+      return res.json({
+        success: true,
+        message: 'Partial success: Some items were deleted but there were errors',
+        details: deletionResults
+      });
+    }
     
+    // Se houve apenas erros
+    if (deletionResults.errors.length > 0) {
+      throw new Error('Failed to delete any items: ' + deletionResults.errors.join('; '));
+    }
+
     // Verificar se o PM2 está disponível
     exec('pm2 list', (pmError, stdout, stderr) => {
       if (pmError) {
         console.log('PM2 not available, skipping restart');
-        // Se PM2 não estiver disponível, ainda retornamos sucesso pois os arquivos foram deletados
         return res.json({ 
           success: true, 
-          message: `Successfully deleted directory (PM2 restart skipped)`,
+          message: `Successfully deleted items (PM2 restart skipped)`,
           details: {
-            userDirDeleted: userDirExists,
-            tokenFileDeleted: tokenFileExists,
+            ...deletionResults,
             pm2Available: false
           }
         });
@@ -198,13 +269,11 @@ app.delete('/api/application/:appId/user-directory/:dirId', (req, res) => {
       exec(`pm2 restart ${application.pm2Name}`, (error, stdout, stderr) => {
         if (error) {
           console.error(`Error restarting PM2 process: ${error}`);
-          // Mesmo com erro no PM2, retornamos sucesso pois os arquivos foram deletados
           return res.json({ 
             success: true, 
-            message: `Directory deleted but failed to restart PM2 process: ${error.message}`,
+            message: `Items deleted but failed to restart PM2 process: ${error.message}`,
             details: {
-              userDirDeleted: userDirExists,
-              tokenFileDeleted: tokenFileExists,
+              ...deletionResults,
               pm2Available: true,
               pm2Restarted: false
             }
@@ -214,10 +283,9 @@ app.delete('/api/application/:appId/user-directory/:dirId', (req, res) => {
         console.log('Successfully restarted PM2 process');
         res.json({ 
           success: true, 
-          message: `Successfully deleted directory and restarted ${application.name}`,
+          message: `Successfully deleted items and restarted ${application.name}`,
           details: {
-            userDirDeleted: userDirExists,
-            tokenFileDeleted: tokenFileExists,
+            ...deletionResults,
             pm2Available: true,
             pm2Restarted: true
           }
@@ -228,8 +296,9 @@ app.delete('/api/application/:appId/user-directory/:dirId', (req, res) => {
     console.error('Error in delete operation:', error);
     res.status(500).json({ 
       success: false, 
-      message: 'Error deleting directory',
-      error: error.message
+      message: 'Error in delete operation',
+      error: error.message,
+      stack: error.stack
     });
   }
 });
