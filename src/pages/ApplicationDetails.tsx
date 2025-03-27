@@ -56,7 +56,7 @@ const ApplicationDetails = () => {
       // Fetch application details
       let currentApp: Application | null = null;
       
-      if (isPreview) {
+      if (isPreviewMode) {
         console.log("Using preview application data");
         currentApp = config.applications.find((app: Application) => app.id === appId) || null;
         setApplication(currentApp);
@@ -68,7 +68,7 @@ const ApplicationDetails = () => {
       }
 
       if (currentApp) {
-        if (isPreview) {
+        if (isPreviewMode) {
           console.log("Generating preview user directories");
           const mockDirectories = [
             { id: 'user1', name: 'user1', hasFiles: true },
@@ -118,7 +118,7 @@ const ApplicationDetails = () => {
       toast.error('Failed to load data');
       setHasValidDirectories(false);
       
-      if (isPreview) {
+      if (isPreviewMode) {
         const currentApp = config.applications.find((app: Application) => app.id === appId) || null;
         setApplication(currentApp);
         setUserDirectories([]);
@@ -126,7 +126,7 @@ const ApplicationDetails = () => {
     } finally {
       setIsLoading(false);
     }
-  }, [appId, isPreview]);
+  }, [appId, isPreviewMode]);
 
   useEffect(() => {
     const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';

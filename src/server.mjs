@@ -57,9 +57,13 @@ app.get('/api/applications', (req, res) => {
 // Nova rota para verificar se os diretórios base existem
 app.get('/api/application/:id/check-directories', (req, res) => {
   const appId = parseInt(req.params.id);
+  console.log(`Checking directories for application ID: ${appId}`);
+  
   const application = config.applications.find(app => app.id === appId);
+  console.log('Found application:', application);
   
   if (!application) {
+    console.log('Application not found');
     return res.status(404).json({ success: false, message: 'Application not found' });
   }
   
@@ -67,8 +71,19 @@ app.get('/api/application/:id/check-directories', (req, res) => {
     const userDataDirPath = path.join(application.directory, 'userDataDir');
     const tokensPath = path.join(application.directory, 'tokens');
     
+    console.log('Checking paths:', {
+      userDataDirPath,
+      tokensPath,
+      applicationDirectory: application.directory
+    });
+    
     const hasUserDataDir = fs.existsSync(userDataDirPath);
     const hasTokensDir = fs.existsSync(tokensPath);
+    
+    console.log('Directory existence check:', {
+      hasUserDataDir,
+      hasTokensDir
+    });
     
     res.json({
       success: true,

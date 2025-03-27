@@ -19,7 +19,7 @@ const config = {
     {
       id: 1,
       name: 'WPPConnect Server',
-      directory: projectRoot,
+      directory: join(projectRoot, 'wppconnect-server'),
       pm2Name: 'wppconnect-server'
     }
   ]
