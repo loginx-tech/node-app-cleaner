@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useEffect, useState, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -18,11 +20,18 @@ interface PM2Process {
   };
 }
 
+interface LogEntry {
+  timestamp: string;
+  type: 'out' | 'error';
+  data: string;
+}
+
 const PM2Status = () => {
   const [processes, setProcesses] = useState<PM2Process[]>([]);
-  const [logs, setLogs] = useState<string[]>([]);
+  const [logs, setLogs] = useState<LogEntry[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("status");
+  const [selectedProcess, setSelectedProcess] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   // Fetch PM2 status every 5 seconds
@@ -34,6 +43,11 @@ const PM2Status = () => {
         
         if (data.success) {
           setProcesses(data.processes);
+          // Se não houver processo selecionado e houver processos disponíveis,
+          // seleciona o primeiro
+          if (!selectedProcess && data.processes.length > 0) {
+            setSelectedProcess(data.processes[0].name);
+          }
           setError(null);
         } else {
           setError(data.message);
@@ -48,39 +62,60 @@ const PM2Status = () => {
     const interval = setInterval(fetchStatus, 5000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [selectedProcess]);
 
   // Setup SSE for logs with auto-reconnect
   useEffect(() => {
-    let eventSource: EventSource;
+    let eventSource: EventSource | null = null;
     
     const connectSSE = () => {
-      eventSource = new EventSource('/api/pm2/logs/node-app-cleaner');
+      // Se não houver processo selecionado, não conecta ao SSE
+      if (!selectedProcess) return;
+
+      // Fecha a conexão anterior se existir
+      if (eventSource) {
+        eventSource.close();
+      }
+
+      console.log(`Connecting to logs for process: ${selectedProcess}`);
+      eventSource = new EventSource(`/api/pm2/logs/${selectedProcess}`);
 
       eventSource.onmessage = (event) => {
-        const logData = JSON.parse(event.data);
-        setLogs(prevLogs => {
-          const newLogs = [...prevLogs, logData.data].slice(-100);
-          
-          if (scrollRef.current) {
-            const { scrollHeight, scrollTop, clientHeight } = scrollRef.current;
-            if (scrollHeight - scrollTop <= clientHeight + 100) {
-              setTimeout(() => {
-                scrollRef.current?.scrollTo({
-                  top: scrollRef.current.scrollHeight,
-                  behavior: 'smooth'
-                });
-              }, 100);
+        try {
+          const logData = JSON.parse(event.data);
+          setLogs(prevLogs => {
+            const newLog: LogEntry = {
+              timestamp: new Date().toISOString(),
+              type: logData.type,
+              data: logData.data.trim()
+            };
+            
+            const newLogs = [...prevLogs, newLog].slice(-100);
+            
+            if (scrollRef.current) {
+              const { scrollHeight, scrollTop, clientHeight } = scrollRef.current;
+              if (scrollHeight - scrollTop <= clientHeight + 100) {
+                setTimeout(() => {
+                  scrollRef.current?.scrollTo({
+                    top: scrollRef.current.scrollHeight,
+                    behavior: 'smooth'
+                  });
+                }, 100);
+              }
             }
-          }
-          
-          return newLogs;
-        });
+            
+            return newLogs;
+          });
+        } catch (error) {
+          console.error('Error parsing log data:', error);
+        }
       };
 
       eventSource.onerror = () => {
         console.error('SSE Error');
-        eventSource.close();
+        if (eventSource) {
+          eventSource.close();
+        }
         setTimeout(connectSSE, 5000);
       };
     };
@@ -92,7 +127,12 @@ const PM2Status = () => {
         eventSource.close();
       }
     };
-  }, []);
+  }, [selectedProcess]);
+
+  // Limpa os logs quando muda o processo
+  useEffect(() => {
+    setLogs([]);
+  }, [selectedProcess]);
 
   // Format bytes to human readable format
   const formatBytes = (bytes: number) => {
@@ -108,7 +148,7 @@ const PM2Status = () => {
   // Calculate uptime in days
   const calculateUptime = (uptime: number) => {
     const now = Date.now();
-    const uptimeMs = now - uptime; // Calcula a diferença entre agora e o timestamp de início
+    const uptimeMs = now - uptime;
 
     const uptimeInDays = Math.floor(uptimeMs / (1000 * 60 * 60 * 24));
     const uptimeInHours = Math.floor((uptimeMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -121,6 +161,11 @@ const PM2Status = () => {
     } else {
       return `${uptimeInMinutes}m`;
     }
+  };
+
+  // Format log timestamp
+  const formatLogTimestamp = (timestamp: string) => {
+    return new Date(timestamp).toLocaleTimeString();
   };
 
   return (
@@ -147,7 +192,15 @@ const PM2Status = () => {
               <ScrollArea className="h-[calc(100vh-15rem)]">
                 <div className="space-y-2">
                   {processes.map(process => (
-                    <Card key={process.pm_id} className="border-l-4 border-l-blue-500">
+                    <Card 
+                      key={process.pm_id} 
+                      className={`border-l-4 ${
+                        process.name === selectedProcess 
+                          ? 'border-l-green-500 bg-green-50' 
+                          : 'border-l-blue-500'
+                      } cursor-pointer hover:bg-gray-50`}
+                      onClick={() => setSelectedProcess(process.name)}
+                    >
                       <div className="p-3">
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                           <div className="col-span-2">
@@ -190,19 +243,32 @@ const PM2Status = () => {
           </TabsContent>
 
           <TabsContent value="logs" className="flex-1">
-            <ScrollArea 
-              className="h-[calc(100vh-15rem)] border-t bg-black text-white font-mono text-xs p-2"
-              ref={scrollRef}
-            >
-              {logs.map((log, index) => (
-                <div 
-                  key={index}
-                  className="whitespace-pre-wrap"
-                >
-                  {log}
-                </div>
-              ))}
-            </ScrollArea>
+            {selectedProcess ? (
+              <ScrollArea 
+                className="h-[calc(100vh-15rem)] border-t bg-black text-white font-mono text-xs p-2"
+                ref={scrollRef}
+              >
+                {logs.map((log, index) => (
+                  <div 
+                    key={index}
+                    className={`whitespace-pre-wrap ${
+                      log.type === 'error' ? 'text-red-400' : 'text-gray-300'
+                    }`}
+                  >
+                    <span className="text-blue-400">[{formatLogTimestamp(log.timestamp)}]</span> {log.data}
+                  </div>
+                ))}
+                {logs.length === 0 && (
+                  <div className="text-gray-500 italic">
+                    Waiting for logs... (Click a process in the Status tab to view its logs)
+                  </div>
+                )}
+              </ScrollArea>
+            ) : (
+              <div className="h-[calc(100vh-15rem)] border-t flex items-center justify-center text-gray-500">
+                Select a process in the Status tab to view logs
+              </div>
+            )}
           </TabsContent>
         </Tabs>
       </CardContent>

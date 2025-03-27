@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { 
   Table, 
@@ -48,117 +48,113 @@ const ApplicationDetails = () => {
   const [isRestarting, setIsRestarting] = useState(false);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
   const [hasValidDirectories, setHasValidDirectories] = useState(false);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const navigate = useNavigate();
 
+  const fetchData = useCallback(async () => {
+    try {
+      // Fetch application details
+      let currentApp: Application | null = null;
+      
+      if (isPreview) {
+        console.log("Using preview application data");
+        currentApp = config.applications.find((app: Application) => app.id === appId) || null;
+        setApplication(currentApp);
+      } else {
+        const appResponse = await fetch('/api/applications');
+        const applications = await appResponse.json();
+        currentApp = applications.find((app: Application) => app.id === appId);
+        setApplication(currentApp);
+      }
+
+      if (currentApp) {
+        if (isPreview) {
+          console.log("Generating preview user directories");
+          const mockDirectories = [
+            { id: 'user1', name: 'user1', hasFiles: true },
+            { id: 'user2', name: 'user2', hasFiles: true },
+            { id: 'admin', name: 'admin', hasFiles: true }
+          ];
+          setUserDirectories(mockDirectories);
+          setHasValidDirectories(true);
+        } else {
+          try {
+            console.log(`Checking directories for app ${appId}...`);
+            const baseResponse = await fetch(`/api/application/${appId}/check-directories`);
+            const baseData = await baseResponse.json();
+            
+            console.log('Base directory check response:', baseData);
+
+            if (baseData.success && baseData.hasValidDirectories) {
+              console.log('Base directories are valid, fetching user directories...');
+              const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
+              const data = await dirResponse.json();
+              
+              console.log('User directories response:', data);
+
+              if (data.success && Array.isArray(data.directories)) {
+                console.log(`Found ${data.directories.length} user directories`);
+                setUserDirectories(data.directories);
+                setHasValidDirectories(true);
+              } else {
+                console.log('No user directories found, but base directories exist');
+                setUserDirectories([]);
+                setHasValidDirectories(true);
+              }
+            } else {
+              console.log('Base directories are not valid');
+              setHasValidDirectories(false);
+              setUserDirectories([]);
+            }
+          } catch (error) {
+            console.error('Error checking directories:', error);
+            setHasValidDirectories(false);
+            setUserDirectories([]);
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching data:', error);
+      toast.error('Failed to load data');
+      setHasValidDirectories(false);
+      
+      if (isPreview) {
+        const currentApp = config.applications.find((app: Application) => app.id === appId) || null;
+        setApplication(currentApp);
+        setUserDirectories([]);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  }, [appId, isPreview]);
+
   useEffect(() => {
-    // Check authentication
     const isAuthenticated = sessionStorage.getItem('isAuthenticated') === 'true';
     if (!isAuthenticated) {
       navigate('/');
       return;
     }
 
-    // Check if we're in a preview environment
     const isPreview = window.location.hostname.includes('lovableproject.com') || 
                      window.location.hostname === 'localhost' || 
                      window.location.hostname === '127.0.0.1';
     setIsPreviewMode(isPreview);
 
-    // Fetch application and user directories
-    const fetchData = async () => {
-      try {
-        // Fetch application details
-        let currentApp: Application | null = null;
-        
-        if (isPreview) {
-          console.log("Using preview application data");
-          currentApp = config.applications.find((app: Application) => app.id === appId) || null;
-          setApplication(currentApp);
-        } else {
-          const appResponse = await fetch('/api/applications');
-          const applications = await appResponse.json();
-          currentApp = applications.find((app: Application) => app.id === appId);
-          setApplication(currentApp);
-        }
-
-        if (currentApp) {
-          if (isPreview) {
-            console.log("Generating preview user directories");
-            const mockDirectories = [
-              { id: 'user1', name: 'user1', hasFiles: true },
-              { id: 'user2', name: 'user2', hasFiles: true },
-              { id: 'admin', name: 'admin', hasFiles: true }
-            ];
-            setUserDirectories(mockDirectories);
-            setHasValidDirectories(true);
-          } else {
-            try {
-              // Primeiro, verifica se os diretórios base existem
-              console.log(`Checking directories for app ${appId}...`);
-              const baseResponse = await fetch(`/api/application/${appId}/check-directories`);
-              const baseData = await baseResponse.json();
-              
-              console.log('Base directory check response:', baseData);
-
-              // Se os diretórios base existem, então procede para buscar diretórios de usuário
-              if (baseData.success && baseData.hasValidDirectories) {
-                console.log('Base directories are valid, fetching user directories...');
-                const dirResponse = await fetch(`/api/application/${appId}/user-directories`);
-                const data = await dirResponse.json();
-                
-                console.log('User directories response:', data);
-
-                if (data.success && Array.isArray(data.directories)) {
-                  console.log(`Found ${data.directories.length} user directories`);
-                  setUserDirectories(data.directories);
-                  setHasValidDirectories(true);
-                } else {
-                  console.log('No user directories found, but base directories exist');
-                  setUserDirectories([]);
-                  setHasValidDirectories(true); // Ainda é válido, só está vazio
-                }
-              } else {
-                console.log('Base directories are not valid');
-                setHasValidDirectories(false);
-                setUserDirectories([]);
-              }
-            } catch (error) {
-              console.error('Error checking directories:', error);
-              setHasValidDirectories(false);
-              setUserDirectories([]);
-            }
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        toast.error('Failed to load data');
-        setHasValidDirectories(false);
-        
-        if (isPreview) {
-          const currentApp = config.applications.find((app: Application) => app.id === appId) || null;
-          setApplication(currentApp);
-          setUserDirectories([]);
-        }
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
     fetchData();
-  }, [appId, navigate, isPreviewMode]);
+  }, [fetchData, navigate]);
 
   const handleDelete = async () => {
     if (!selectedDirectory) return;
     
     setIsDeleting(true);
+    setIsDialogOpen(false);
     
     try {
       if (isPreviewMode) {
         console.log(`Simulating deletion of directory ${selectedDirectory}`);
-        setTimeout(() => {
-          setUserDirectories(userDirectories.filter(dir => dir.id !== selectedDirectory));
-          toast.success(`Successfully deleted directory ${selectedDirectory} (preview mode)`);
-        }, 1000);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        setUserDirectories(userDirectories.filter(dir => dir.id !== selectedDirectory));
+        toast.success(`Successfully deleted directory ${selectedDirectory} (preview mode)`);
       } else {
         const response = await fetch(`/api/application/${appId}/user-directory/${selectedDirectory}`, {
           method: 'DELETE',
@@ -167,7 +163,7 @@ const ApplicationDetails = () => {
         const result = await response.json();
         
         if (result.success) {
-          setUserDirectories(userDirectories.filter(dir => dir.id !== selectedDirectory));
+          await fetchData();
           toast.success(result.message);
         } else {
           toast.error(result.message);
@@ -219,7 +215,6 @@ const ApplicationDetails = () => {
     );
   }
 
-  // Se não houver diretórios válidos, mostra apenas a mensagem e o botão de voltar
   if (!hasValidDirectories) {
     return (
       <div className="min-h-screen bg-gray-100 p-4 sm:p-6">
@@ -283,16 +278,17 @@ const ApplicationDetails = () => {
                     <TableCell>{dir.id}</TableCell>
                     <TableCell>{dir.name}</TableCell>
                     <TableCell className="text-right">
-                      <AlertDialog>
+                      <AlertDialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
                         <AlertDialogTrigger asChild>
                           <Button 
                             variant="destructive" 
                             size="sm"
                             disabled={isDeleting}
                             className="flex items-center"
+                            onClick={() => setSelectedDirectory(dir.id)}
                           >
                             <Trash className="w-4 h-4 mr-1" />
-                            Delete
+                            {isDeleting ? 'Deleting...' : 'Delete'}
                           </Button>
                         </AlertDialogTrigger>
                         <AlertDialogContent>
@@ -304,15 +300,13 @@ const ApplicationDetails = () => {
                             </AlertDialogDescription>
                           </AlertDialogHeader>
                           <AlertDialogFooter>
-                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
                             <AlertDialogAction
-                              onClick={() => {
-                                setSelectedDirectory(dir.id);
-                                handleDelete();
-                              }}
+                              onClick={handleDelete}
                               className="bg-red-600 hover:bg-red-700"
+                              disabled={isDeleting}
                             >
-                              Delete
+                              {isDeleting ? 'Deleting...' : 'Delete'}
                             </AlertDialogAction>
                           </AlertDialogFooter>
                         </AlertDialogContent>

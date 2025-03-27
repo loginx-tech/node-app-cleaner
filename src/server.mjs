@@ -409,16 +409,60 @@ app.get('/api/pm2/logs/:appName', (req, res) => {
   const logProcess = exec(`pm2 logs ${appName} --raw --lines 50`, { maxBuffer: 1024 * 1024 });
   
   logProcess.stdout.on('data', (data) => {
-    sendLog({ type: 'out', data: data.toString() });
+    const lines = data.toString().split('\n').filter(line => line.trim());
+    lines.forEach(line => {
+      try {
+        // Tenta extrair timestamp e tipo do log
+        const match = line.match(/^\[([^\]]+)\]\s*(.+)$/);
+        if (match) {
+          sendLog({ 
+            type: line.includes('error') ? 'error' : 'out',
+            data: match[2],
+            timestamp: match[1]
+          });
+        } else {
+          sendLog({ 
+            type: line.includes('error') ? 'error' : 'out',
+            data: line,
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (error) {
+        console.error('Error processing log line:', error);
+        sendLog({ 
+          type: 'error',
+          data: line,
+          timestamp: new Date().toISOString()
+        });
+      }
+    });
   });
   
   logProcess.stderr.on('data', (data) => {
-    sendLog({ type: 'error', data: data.toString() });
+    const lines = data.toString().split('\n').filter(line => line.trim());
+    lines.forEach(line => {
+      sendLog({ 
+        type: 'error',
+        data: line,
+        timestamp: new Date().toISOString()
+      });
+    });
+  });
+
+  logProcess.on('error', (error) => {
+    console.error(`Error in PM2 logs process: ${error}`);
+    sendLog({
+      type: 'error',
+      data: `Error getting PM2 logs: ${error.message}`,
+      timestamp: new Date().toISOString()
+    });
   });
   
   // Handle client disconnect
   req.on('close', () => {
-    logProcess.kill();
+    if (logProcess) {
+      logProcess.kill();
+    }
   });
 });
 
